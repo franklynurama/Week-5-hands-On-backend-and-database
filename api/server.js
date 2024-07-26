@@ -1,29 +1,36 @@
 const express = require("express");
-const app = express();
 const mysql = require("mysql2");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const dotenv = require("dotenv");
+const path = require("path");
 
+// initiate app
+const app = express();
+
+// setting up the middleware
 app.use(express.json());
 app.use(cors());
 dotenv.config();
 
-// connection to the database
+// Serve static files from the parent directory
+app.use(express.static(path.join(__dirname, "..")));
+
+// creating a connection to the database server
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
 });
 
-// check if connection works
+// check if connection to the database server works
 db.connect((err) => {
   if (err) return console.log("Error connecting to MySQL");
 
   // connection works
   console.log("Connected to MYSQL as id: ", db.threadId);
 
-  // Create database if it does not exist
+  // Create a database if it does not exist
   db.query(`CREATE DATABASE IF NOT EXISTS expense_tracker`, (err, result) => {
     // error creating db
     if (err) return console.log("error creating db");
@@ -31,7 +38,7 @@ db.connect((err) => {
     // if no error creating db
     console.log("Database expense_tracker checked/created successfully");
 
-    // select the expense_tracker db
+    // select the created database (expense_tracker)
     db.changeUser({ database: "expense_tracker" }, (err, result) => {
       // if err changing db
       if (err) return console.log("error changing db");
@@ -44,7 +51,7 @@ db.connect((err) => {
       CREATE TABLE IF NOT EXISTS users (
           id INT AUTO_INCREMENT PRIMARY KEY,
           email VARCHAR(100) NOT NULL UNIQUE,
-          username VARCHAR(50) NOT NULL,
+          username VARCHAR(50) NOT NULL UNIQUE,
           password VARCHAR(255) NOT NULL
       )
   `;
@@ -66,12 +73,12 @@ app.post("/api/register", async (req, res) => {
     const user = `SELECT * FROM users WHERE email = ?`;
 
     db.query(user, [req.body.email], (err, data) => {
-      // if email exists
+      // if email exists in database
       if (data.length > 0)
         return res.status(409).json({ message: "User already exists!" });
 
-      // if no email exists
-      // password hashing
+      // if no email exists in database
+      // password hashing (encryption)
       const salt = bcrypt.genSaltSync(10);
       const hashedPassword = bcrypt.hashSync(req.body.password, salt);
 
@@ -125,6 +132,9 @@ app.listen(3000, () => {
 
 // Learnt in class
 // run with (nodemon server.js)
+// run on CLI (mysql -u root -p) :-
+// After entering the correct password, you will be granted access to
+// the MySQL shell where you can execute SQL queries and commands.
 //
 // In the context of RESTful APIs (Representational State Transfer),
 // the standard HTTP methods used for CRUD (Create, Retrieve, Update, Delete)
